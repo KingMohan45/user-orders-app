@@ -1,4 +1,4 @@
-export const API_URL = 'http://127.0.0.1:8000';
-export const WS_API_URL = 'ws://127.0.0.1:8000';
-export const USERS_ENDPOINT = '/users';
-export const ORDERS_ENDPOINT = '/orders';
+export const API_URL = process.env.REACT_APP_API_URL;
+export const WS_API_URL = process.env.REACT_APP_WS_API_URL;
+export const USERS_ENDPOINT = process.env.REACT_APP_USERS_ENDPOINT;
+export const ORDERS_ENDPOINT = process.env.REACT_APP_ORDERS_ENDPOINT;
