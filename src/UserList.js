@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, message } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import { API_URL, USERS_ENDPOINT, ORDERS_ENDPOINT, WS_API_URL } from './constants';
-import { jsonToCsv } from './utils';
+import { API_URL, USERS_ENDPOINT, WS_API_URL } from './constants';
+import { downloadFileFromURL } from './utils';
 
 const UserList = () => {
   const [users, setUsers] = useState({ items: [], total: 0 });
@@ -24,26 +24,35 @@ const UserList = () => {
 
   const handleDownload = (user_id) => {
     // Hit WebSocket endpoint to initiate file download
-    const socket = new WebSocket(`${WS_API_URL}${ORDERS_ENDPOINT}/${user_id}/download`);
-
+    // const socket = new WebSocket(`${WS_API_URL}${ORDERS_ENDPOINT}/${user_id}/download`);
+    const socket = new WebSocket(`${WS_API_URL}/ws`);
+    const handshake_json = {
+      "command": "subscribe",
+      "identifier": "{\"channel\": \"DownloadChannel\",\"action\": \"download_orders\"}",
+    }
+    const download_orders_json = {
+      "command": "message",
+      "identifier": handshake_json.identifier,
+      "data": "{\"action\": \"download_orders\", \"args\": \"{\\\"user_id\\\": "+user_id+"}\"}"
+    }
+    
     socket.onmessage = (event) => {
       const event_data = event.data;
-      // check if the string is json stirng
-      // console.log(typeof(event_data));
-      if (event_data.startsWith('{')) {
-        const jsonData = JSON.parse(event.data);
-        const csvData = jsonToCsv(jsonData.orders);
-        const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${user_id}_orders_${Date.now()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        message.info(event_data);
+      const json_data = JSON.parse(event_data);
+      if (json_data.type === 'welcome') {
+        socket.send(JSON.stringify(handshake_json))
+        return
+      } 
+      if (json_data.type === 'confirm_subscription') {
+        socket.send(JSON.stringify(download_orders_json))
+        return
+      }
+      if (json_data.message !== undefined && json_data.message.file !== undefined) {
+        // get the url from the message
+        downloadFileFromURL(json_data.message.file);
+      } else if ((json_data.type !== 'ping' && json_data.type !== 'welcome' && json_data.type !== 'confirm_subscription')) {
+        // get the url from the message
+        message.info(json_data.message, json_data.type);
       }
     };
   };
@@ -55,9 +64,9 @@ const UserList = () => {
       key: 'id',
     },
     {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
+      title: 'Username',
+      dataIndex: 'username',
+      key: 'username',
     },
     {
       title: 'Email',
@@ -98,6 +107,7 @@ const UserList = () => {
         }}
         style={{ boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', width: '60%', margin: '0 auto' }}
         scroll={{ y: 400 }}
+        rowKey="id"
       />
     </div>
   );

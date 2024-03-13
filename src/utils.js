@@ -15,4 +15,7 @@ export const jsonToCsv = (jsonData) => {
     // Join rows with newline character
     return csvRows.join('\n');
   };
-  
+
+export const downloadFileFromURL = (url) => {
+  window.open(url, '_self');
+}
